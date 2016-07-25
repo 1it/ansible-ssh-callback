@@ -1,0 +1,2 @@
+# Example .ssh/authorized_keys
+# command="/home/ansible/ssh-server-script",no-agent-forwarding,no-X11-forwarding ssh-rsa AAAAB3NzaC1.... ansible@test.example.com

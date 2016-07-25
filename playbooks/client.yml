@@ -1,0 +1,29 @@
+# Example playbook: Initial playbook for client-node
+---
+- hosts: client
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Initial run | Create ansible user
+      user: name=ansible generate_ssh_key=yes ssh_key_file=/ansible/.ssh/ansible_rsa ssh_key_bits=4096
+      register: ansiblekey
+
+    - name: Initial run | Get ansible user public key
+      shell: cat /home/ansible/.ssh/ansible_rsa.pub
+      when: "{{ ansiblekey.changed }}"
+      register: getkey
+
+    - name: Initial run | Copy ssh config for root
+      copy: src={{ item }} dest=/root/.ssh/config
+      with_first_found:
+          - "{{ inventory_hostname }}-ansible.ssh.config"
+          - "ansible.ssh.config"
+
+    - name: Initial run | Copy ansible-key to ansible.virtualhealth.com
+      authorized_key: >
+          user=ansible
+          key="{{ item }}"
+          key_options: 'command="/home/ansible/runner",no-agent-forwarding,no-X11-forwarding'
+      with_items: "{{ getkey.stdout_lines }}"
+      when: "{{ ansiblekey.changed }}"
+      delegate_to: localhost

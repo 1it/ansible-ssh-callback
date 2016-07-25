@@ -1,0 +1,13 @@
+# Example crontab for ansible-ssh-callback 
+#
+# Env vars
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+SHELL="/bin/bash"
+USER="ansible"
+BASH_ENV="$HOME/.profile"
+
+# For more information see the manual pages of crontab(5) and cron(8)
+#
+# m h  dom mon dow   command
+# @reboot KEY="/home/ansible/.ssh/init_rsa" /usr/local/bin/ssh-tunnel update
+30 * * * * /usr/local/bin/ssh-tunnel update

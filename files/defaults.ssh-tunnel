@@ -1,0 +1,7 @@
+# Example ssh-tunnel vars file
+# Uncomment following lines to use these vars
+#
+# IP="server.example.com"
+# REMOTE_PORT="22"
+# BACKCONNECT_PORT="20022"
+# KEY="~/.ssh/id_rsa"

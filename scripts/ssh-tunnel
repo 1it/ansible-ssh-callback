@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+
+# ssh-tunnel reverse connect helper script
+# Author: Ivan Tuzhilkin <ivan.tuzhilkin@gmail.com>
+# Do simple backconnect to ipv4-address/hostname
+# Works with ansible to pull updates from server
+
+# Defaults
+DEFAULTS_FILE="$HOME/.ssh-tunnel"
+
+# Get default vars if exists
+[ -r $DEFAULTS_FILE ] && . $DEFAULTS_FILE
+
+exec_connect ()
+{
+    echo "Initializing ssh-tunnel to remote address: $IP"
+    echo "Remote server port is: $REMOTE_PORT"
+    echo "Backconnect port is: $BACKCONNECT_PORT"
+    echo "Press ctrl+c to interrupt connection"
+    ssh -T -R$BACKCONNECT_PORT:localhost:22 root@$IP -p$REMOTE_PORT -i$KEY
+}
+
+exec_update ()
+{
+    tunnel_args="-o ControlMaster=auto -o ControlPersist=600 -o ControlPath=/tmp/%u%r@%h-%p"
+    out_file="/tmp/ssh_tunnel_$USER.out"
+
+    # Check log file exists and clean
+    touch $out_file
+    truncate -s 0 $out_file
+
+    # Start connection
+    echo "Initializing ssh-tunnel to remote address: $SERVER"
+    echo "Press ctrl+c to interrupt connection"
+    ssh -f -N -T -R0:localhost:22 ansible@"$SERVER" -p"$REMOTE_PORT" -i"$KEY" $tunnel_args -E "$out_file"
+
+    # Waiting for port allocation
+    sleep 5
+
+    # Get the port number
+    port=`awk '{print $3}' $out_file`
+
+    # Print port to stdout
+    echo "Port open on $SERVER: $port"
+    echo "Pulling updates from $SERVER"
+    # Connect again to initialize update proccess
+    ssh $SERVER "$port"
+
+    # Close tunnel
+    if ssh -T -O "exit" -o ControlPath=/tmp/%u%r@%h-%p $SERVER; then
+        echo "Done"
+    else
+        echo "Ssh-tunnel connection can't be closed. Command failed!"
+        echo "Please add folowing lines to $HOME/.ssh/config: "
+        echo 'Host * '
+        echo 'ControlMaster auto '
+        echo 'ControlPath /tmp/%u%r@%h-%p '
+        echo 'ControlPersist 600 '
+        exit 1
+    fi
+}
+
+show_help ()
+{
+    echo "This script make ssh reverse connect to your host"
+    echo "To make sure connection is secure, add public key from current host to remote host with params like this: "
+    echo 'command="echo ""This tunnel will work for an hour."; sleep 3600",no-agent-forwarding,no-X11-forwarding,permitopen="localhost:2222" ssh-rsa your_public_key_text root@example.com'
+    echo 'Also you can use countdown() function (limit tunnel lifecycle) like this http://superuser.com/questions/611538/is-there-a-way-to-display-a-countdown-or-stopwatch-timer-in-a-terminal'
+    echo "See ssh-tunnel --usage for additional information"
+}
+
+show_usage ()
+{
+    echo "Usage: ssh-tunnel [OPTION] start"
+    echo "Make ssh reverse connect to your host"
+    echo ""
+    echo "connect            Required single option to start connection process"
+    echo "update             Required single option to start pulling updates from remote server"
+    echo "-i=1.2.3.4       ipv4 address or hostname of remote host"
+    echo "-r=22            remote host ssh port, default: 22"
+    echo "-b=2222          backconnect ssh port, default: 2222"
+    echo "-k=/path/to/key  define path to your id_rsa secret key"
+    echo ""
+    echo "Example: "
+    echo "   ssh-tunnel -i=remote.example.com -b=2222 -k=/home/admin/.ssh/id_rsa connect"
+}
+
+
+for option in "$@"; do
+    case $option in
+        -i=*)
+            IP="${option#*=}"
+            shift
+            ;;
+        -r=*)
+            REMOTE_PORT="${option#*=}"
+            shift
+            ;;
+        -b=*)
+            BACKCONNECT_PORT="${option#*=}"
+            shift
+            ;;
+        -k=*)
+            KEY="${option#*=}"
+            shift
+            ;;
+        -h|--help)
+            show_help
+            ;;
+        -u|--usage)
+            show_usage
+            ;;
+        connect)
+            exec_connect
+            ;;
+        update)
+            exec_update
+            ;;
+        *|"")
+            echo "Wrong option $@"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+if [[ $1 = "" ]]; then
+    show_help
+    exit 1
+fi

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# Global vars
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+REMOTE_PORT="$SSH_ORIGINAL_COMMAND"
+
+# Ansible vars
+INVENTORY="$HOME/inventory/client"
+TAGS=""
+PLAY_DIR="$HOME/playbooks"
+PLAY="client.yml"
+
+run_playbooks () {
+    cd $HOME/ansible
+
+    # Run tasks
+    ansible-playbook -i "$INVENTORY" "$PLAY_DIR"/"$PLAY" --tags "$TAGS" -e ansible_ssh_port="$REMOTE_PORT"
+}
+
+main () {
+    run_playbooks
+}
+
+main "$@"

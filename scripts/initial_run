@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+# Play vars
+REMOTE_PORT="$SSH_ORIGINAL_COMMAND"
+INVENTORY="$HOME/inventory/client"
+PLAY_DIR="$HOME/playbooks"
+PLAY="client.yml"
+TAGS=""
+
+# Send notification with clients external ip address.
+notify () {
+    MAILTO="admin@server.example.com"
+    CLIENT=`echo $SSH_CLIENT | awk '{print $1}'`
+
+    echo "<p>The initialization process is started for $CLIENT</p>" | mail -a "Content-Type: text/html" -s "Notice from '$HOSTNAME': New system initial playbook run - '$CLIENT'" $MAILTO
+}
+
+# Start initial playbook run
+initial_run () {
+    cd $HOME/ansible
+
+    ansible-playbook -i "$INVENTORY" "$PLAY_DIR"/"$PLAY" -e ansible_ssh_port="$REMOTE_PORT"
+}
+
+# Run all
+main () {
+    if [ -z $REMOTE_PORT ]
+        then
+            echo "REMOTE_PORT is unset"
+            notify
+            exit 1
+        else
+            notify
+            initial_run
+    fi
+}
+
+main "$@"

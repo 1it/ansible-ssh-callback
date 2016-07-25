@@ -1,0 +1,12 @@
+# Example playbook: Install Ansible from source
+---
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: Ansible | Clone git repo
+      git: repo=git://github.com/ansible/ansible.git dest=/home/ansible/src accept_hostkey=yes version='origin/stable-2.1' force=yes
+      tags: self-update
+
+    - name: Ansible | Do self-update
+      shell: make && make install chdir=/home/ansible/src
+      tags: self-update

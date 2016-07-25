@@ -1,0 +1,8 @@
+[client]
+client.example.com
+
+[client:vars]
+ansible_host=127.0.0.1
+ansible_remote_user=ansible
+ansible_become=True
+
